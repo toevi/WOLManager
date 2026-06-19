@@ -21,9 +21,6 @@ A Windows desktop tool for network administrators — Wake-on-LAN, remote power 
 
 ## Screenshots
 
-### Main window
-![Main window](screenshots/main-window.png)
-
 ### Info / Port Scan
 Pings the target, guesses the OS from TTL, and scans 20 common TCP ports in parallel.
 
