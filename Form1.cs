@@ -645,6 +645,12 @@ namespace WOLManager
             }
         }
 
+        // Dopuszcza litery, cyfry i znaki bezpieczne w SSH target (hostname + username).
+        // Wyklucza wszystkie metaznaki shellu — ochrona przed injection w fallbacku cmd.exe
+        // (hostname może pochodzić z DNS kontrolowanego przez atakującego).
+        private static readonly System.Text.RegularExpressions.Regex _sshTargetRegex =
+            new(@"^[a-zA-Z0-9._@%:-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
         private void BtnSSH_Click(object sender, EventArgs e)
         {
             if (dgvComputers.CurrentRow?.DataBoundItem is not Computer computer)
@@ -660,31 +666,34 @@ namespace WOLManager
                 return;
             }
 
-            // Jeśli SshUser ustawiony w rekordzie — używamy go automatycznie.
-            // Jeśli pusty — SSH terminal sam zapyta o credentials (standardowe zachowanie klienta SSH).
             var user = computer.SshUser;
             var target = string.IsNullOrWhiteSpace(user) ? host : $"{user}@{host}";
 
+            if (!_sshTargetRegex.IsMatch(target))
+            {
+                MessageBox.Show(
+                    $"Invalid SSH target: \"{target}\"\n\n" +
+                    "Host and username may only contain: letters, digits, . - _ @ % :\n" +
+                    "(shell metacharacters are blocked for security)",
+                    "SSH — Invalid Target", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             try
             {
-                // Próba 1: Windows Terminal (wt.exe) — otwiera nową kartę z ssh
-                LaunchSsh("wt.exe", target, useShell: true);
-                UpdateStatusBar($"SSH launched: {target}");
+                // Próba 1: Windows Terminal — `wt -- ssh user@host`
+                // `--` sygnalizuje koniec argumentów wt i początek komendy terminala.
+                SshLaunchWT(target);
+                UpdateStatusBar($"SSH → {target}");
             }
             catch
             {
                 try
                 {
-                    // Próba 2: cmd.exe /k ssh — klasyczne okno konsoli, zostaje otwarte po połączeniu
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        UseShellExecute = true
-                    };
-                    psi.ArgumentList.Add("/k");
-                    psi.ArgumentList.Add($"ssh {target}");
-                    Process.Start(psi);
-                    UpdateStatusBar($"SSH launched via cmd: {target}");
+                    // Próba 2: cmd.exe /k ssh — klasyczne okno konsoli.
+                    // target zwalidowany (brak metaznaków cmd), interpolacja bezpieczna.
+                    SshLaunchCmd(target);
+                    UpdateStatusBar($"SSH (cmd) → {target}");
                 }
                 catch (Exception ex)
                 {
@@ -697,13 +706,23 @@ namespace WOLManager
             }
         }
 
-        private static void LaunchSsh(string terminal, string target, bool useShell)
+        private static void SshLaunchWT(string target)
         {
-            var psi = new ProcessStartInfo { FileName = terminal, UseShellExecute = useShell };
+            var psi = new ProcessStartInfo { FileName = "wt.exe", UseShellExecute = true };
+            psi.ArgumentList.Add("--");
             psi.ArgumentList.Add("ssh");
             psi.ArgumentList.Add(target);
             var proc = Process.Start(psi);
-            if (proc == null) throw new InvalidOperationException("Process did not start");
+            if (proc == null) throw new InvalidOperationException("wt.exe did not start");
+        }
+
+        private static void SshLaunchCmd(string target)
+        {
+            var psi = new ProcessStartInfo { FileName = "cmd.exe", UseShellExecute = true };
+            psi.ArgumentList.Add("/k");
+            psi.ArgumentList.Add($"ssh {target}");
+            var proc = Process.Start(psi);
+            if (proc == null) throw new InvalidOperationException("cmd.exe did not start");
         }
 
         private void BtnInfo_Click(object sender, EventArgs e)
