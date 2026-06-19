@@ -11,7 +11,10 @@
 
 **Do not open a public issue for security vulnerabilities.**
 
-Please report security issues by emailing **tomek.maselko@gmail.com** with:
+Please use GitHub's [private vulnerability reporting](../../security/advisories/new) feature:
+click **Report a vulnerability** on the Security tab of this repository.
+
+Include:
 
 - A description of the vulnerability
 - Steps to reproduce
