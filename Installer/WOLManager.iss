@@ -2,7 +2,7 @@
 ; Kompilacja:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" WOLManager.iss
 
 #define MyAppName "WOL Manager"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.1"
 #define MyAppPublisher "tmfgroup"
 #define MyAppExeName "WOLManager.exe"
 
