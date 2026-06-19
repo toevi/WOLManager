@@ -421,11 +421,12 @@ namespace WOLManager
                 var process = new ProcessStartInfo
                 {
                     FileName = "arp",
-                    Arguments = $"-a {ip}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     CreateNoWindow = true
                 };
+                process.ArgumentList.Add("-a");
+                process.ArgumentList.Add(ip);
                 
                 using var p = Process.Start(process);
                 var output = p.StandardOutput.ReadToEnd();

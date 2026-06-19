@@ -33,42 +33,69 @@ namespace WOLManager
             InitializeComputersList();
             dgvComputers.DataSource = bindingSource;
             dgvComputers.AutoGenerateColumns = true;
-            
-            // Konfiguracja kolumn DataGridView
             ConfigureDataGridView();
-            
-            btnWake.Click += BtnWake_Click;
-            btnAdd.Click += BtnAdd_Click;
+
+            // Power
+            btnWake.Click     += BtnWake_Click;
+            btnRestart.Click  += BtnRestart_Click;
+            btnShutdown.Click += BtnShutdown_Click;
+            // Remote Access
+            btnRDP.Click           += BtnRDP_Click;
+            btnSSH.Click           += BtnSSH_Click;
+            btnNetworkShare.Click  += BtnNetworkShare_Click;
+            btnInfo.Click          += BtnInfo_Click;
+            // Computers
+            btnAdd.Click     += BtnAdd_Click;
             btnAddAuto.Click += BtnAddAuto_Click;
-            btnEdit.Click += BtnEdit_Click;
-            btnRemove.Click += BtnRemove_Click;
-            btnRDP.Click += BtnRDP_Click;
-            btnNetworkShare.Click += BtnNetworkShare_Click;
-            btnHelp.Click += BtnHelp_Click;
-            // Przypnij przycisk Refresh (dawniej Set Name) do istniejącej metody odświeżania
+            btnEdit.Click    += BtnEdit_Click;
+            btnRemove.Click  += BtnRemove_Click;
+            // Misc
+            btnHelp.Click    += BtnHelp_Click;
             btnSetName.Click += StatusTimer_Tick;
-            
-            // Dodaj obsługę podwójnego kliknięcia na DataGridView
+
             dgvComputers.CellDoubleClick += DgvComputers_CellDoubleClick;
-            
-            // Natychmiastowe sprawdzenie stanu przy starcie
-            Task.Run(async () => await CheckAllComputersStatus());
-            
-            // Timer for auto-refresh
+
+            // System tray
+            notifyIcon1.Icon = this.Icon;
+            menuItemOpen.Font = new System.Drawing.Font(menuItemOpen.Font, System.Drawing.FontStyle.Bold);
+            menuItemOpen.Click += (s, e) => RestoreFromTray();
+            menuItemExit.Click += (s, e) => { notifyIcon1.Visible = false; Application.Exit(); };
+            notifyIcon1.DoubleClick += (s, e) => RestoreFromTray();
+            this.Resize += Form1_Resize;
+
+            // Timer auto-refresh
             statusTimer = new System.Windows.Forms.Timer();
-            statusTimer.Interval = 10000; // 10 seconds
+            statusTimer.Interval = 10000;
             statusTimer.Tick += StatusTimer_Tick;
             statusTimer.Start();
 
-            // Zwolnij timer przy zamykaniu formularza (unikamy wycieku zasobu)
             FormClosed += (s, e) =>
             {
                 statusTimer.Stop();
                 statusTimer.Dispose();
+                notifyIcon1.Visible = false;
             };
-            
-            // Informacja o podwójnym kliknięciu
+
+            Task.Run(async () => await CheckAllComputersStatus());
             UpdateStatusBar("Ready - Double-click on computer to wake up, or use buttons on the right");
+        }
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            if (WindowState == FormWindowState.Minimized)
+            {
+                Hide();
+                notifyIcon1.Visible = true;
+                notifyIcon1.ShowBalloonTip(2000, "WOL Manager", "Minimized to tray — double-click to restore", ToolTipIcon.Info);
+            }
+        }
+
+        private void RestoreFromTray()
+        {
+            Show();
+            WindowState = FormWindowState.Normal;
+            Activate();
+            notifyIcon1.Visible = false;
         }
 
         // 0 = brak sprawdzania, 1 = trwa. Zapobiega nakładaniu się przebiegów
@@ -121,37 +148,25 @@ namespace WOLManager
         {
             dgvComputers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvComputers.AllowUserToResizeColumns = true;
-            
-            // Dodaj tooltip informujący o podwójnym kliknięciu
+
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(dgvComputers, "💡 Double-click on any computer to wake it up!\nOr use the 'Wake Up' button on the right.");
-            
-            // Po załadowaniu danych, ustaw szerokości kolumn
+            toolTip.SetToolTip(dgvComputers, "Double-click on any computer to wake it up, or use the buttons on the right.");
+
             if (dgvComputers.Columns.Count > 0)
             {
                 foreach (DataGridViewColumn column in dgvComputers.Columns)
                 {
                     switch (column.Name)
                     {
-                        case "Name":
-                            column.FillWeight = 25;
-                            break;
-                        case "IP":
-                            column.FillWeight = 20;
-                            break;
-                        case "MacAddress":
-                            column.FillWeight = 25;
-                            break;
-                        case "Broadcast":
-                            column.FillWeight = 20;
-                            break;
-                        case "IsOnline":
-                            column.FillWeight = 10;
-                            column.HeaderText = "Status";
-                            break;
-                        default:
-                            column.FillWeight = 10;
-                            break;
+                        case "Name":        column.FillWeight = 20; break;
+                        case "IP":          column.FillWeight = 16; break;
+                        case "MacAddress":  column.FillWeight = 20; column.HeaderText = "MAC"; break;
+                        case "Broadcast":   column.FillWeight = 14; break;
+                        case "Port":        column.FillWeight = 6;  break;
+                        case "PingType":    column.FillWeight = 7;  column.HeaderText = "Ping"; break;
+                        case "Notes":       column.FillWeight = 22; break;
+                        case "IsOnline":    column.FillWeight = 9;  column.HeaderText = "Status"; break;
+                        default:            column.FillWeight = 6;  break;
                     }
                 }
             }
@@ -400,10 +415,15 @@ namespace WOLManager
                 if (computer.IsOnline)
                 {
                     UpdateStatusBar($"{computer.Name} is online");
+                    // Powiadomienie w zasobniku — przydatne gdy apka jest zminimalizowana
+                    notifyIcon1.BalloonTipTitle = "WOL Manager";
+                    notifyIcon1.BalloonTipText = $"{computer.Name} is now online!";
+                    notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
+                    notifyIcon1.ShowBalloonTip(4000);
                 }
                 else
                 {
-                    UpdateStatusBar($"{computer.Name} is not responding");
+                    UpdateStatusBar($"{computer.Name} is not responding yet");
                 }
             }
             catch (Exception ex)
@@ -625,6 +645,162 @@ namespace WOLManager
             }
         }
 
+        private void BtnSSH_Click(object sender, EventArgs e)
+        {
+            if (dgvComputers.CurrentRow?.DataBoundItem is not Computer computer)
+            {
+                UpdateStatusBar("Select a computer from the list!");
+                return;
+            }
+
+            var host = !string.IsNullOrWhiteSpace(computer.IP) ? computer.IP : computer.Name;
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                UpdateStatusBar("No IP address or hostname for SSH!");
+                return;
+            }
+
+            // Jeśli SshUser ustawiony w rekordzie — używamy go automatycznie.
+            // Jeśli pusty — SSH terminal sam zapyta o credentials (standardowe zachowanie klienta SSH).
+            var user = computer.SshUser;
+            var target = string.IsNullOrWhiteSpace(user) ? host : $"{user}@{host}";
+
+            try
+            {
+                // Próba 1: Windows Terminal (wt.exe) — otwiera nową kartę z ssh
+                LaunchSsh("wt.exe", target, useShell: true);
+                UpdateStatusBar($"SSH launched: {target}");
+            }
+            catch
+            {
+                try
+                {
+                    // Próba 2: cmd.exe /k ssh — klasyczne okno konsoli, zostaje otwarte po połączeniu
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        UseShellExecute = true
+                    };
+                    psi.ArgumentList.Add("/k");
+                    psi.ArgumentList.Add($"ssh {target}");
+                    Process.Start(psi);
+                    UpdateStatusBar($"SSH launched via cmd: {target}");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Cannot launch SSH client.\n\n{ex.Message}\n\n" +
+                        "Make sure OpenSSH client is installed:\n" +
+                        "Settings → Apps → Optional features → OpenSSH Client",
+                        "SSH Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private static void LaunchSsh(string terminal, string target, bool useShell)
+        {
+            var psi = new ProcessStartInfo { FileName = terminal, UseShellExecute = useShell };
+            psi.ArgumentList.Add("ssh");
+            psi.ArgumentList.Add(target);
+            var proc = Process.Start(psi);
+            if (proc == null) throw new InvalidOperationException("Process did not start");
+        }
+
+        private void BtnInfo_Click(object sender, EventArgs e)
+        {
+            if (dgvComputers.CurrentRow?.DataBoundItem is Computer computer)
+            {
+                if (string.IsNullOrWhiteSpace(computer.IP) && string.IsNullOrWhiteSpace(computer.Name))
+                {
+                    UpdateStatusBar("No IP address or hostname for this computer!");
+                    return;
+                }
+                UpdateStatusBar($"Opening Info for {computer.Name}...");
+                using var infoForm = new ComputerInfoForm(computer);
+                infoForm.Icon = this.Icon;
+                infoForm.ShowDialog(this);
+            }
+            else
+            {
+                UpdateStatusBar("Select a computer from the list!");
+            }
+        }
+
+        private void BtnRestart_Click(object sender, EventArgs e)
+        {
+            if (dgvComputers.CurrentRow?.DataBoundItem is Computer computer)
+                SendPowerCommand(computer, "/r", "Restart");
+            else
+                UpdateStatusBar("Select a computer from the list!");
+        }
+
+        private void BtnShutdown_Click(object sender, EventArgs e)
+        {
+            if (dgvComputers.CurrentRow?.DataBoundItem is Computer computer)
+                SendPowerCommand(computer, "/s", "Shutdown");
+            else
+                UpdateStatusBar("Select a computer from the list!");
+        }
+
+        private void SendPowerCommand(Computer computer, string flag, string label)
+        {
+            var confirm = MessageBox.Show(
+                $"{label} computer \"{computer.Name}\"?\n\nIP: {computer.IP}",
+                $"Confirm {label}",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                // Dla zdalnego shutdown Windows wymaga: File and Printer Sharing + admin$ share + prawa admina
+                var target = !string.IsNullOrWhiteSpace(computer.Name) ? computer.Name : computer.IP;
+                if (string.IsNullOrWhiteSpace(target))
+                {
+                    MessageBox.Show("No computer name or IP to connect to.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "shutdown.exe",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true
+                };
+                psi.ArgumentList.Add(flag);
+                psi.ArgumentList.Add("/m");
+                psi.ArgumentList.Add($"\\\\{target}");
+                psi.ArgumentList.Add("/t");
+                psi.ArgumentList.Add("0");
+                psi.ArgumentList.Add("/c");
+                psi.ArgumentList.Add($"{label} by WOL Manager");
+
+                using var p = Process.Start(psi);
+                var err = p?.StandardError.ReadToEnd() ?? "";
+                p?.WaitForExit(3000);
+
+                if (!string.IsNullOrWhiteSpace(err))
+                {
+                    MessageBox.Show(
+                        $"shutdown.exe returned an error:\n{err}\n\n" +
+                        "Tip: Remote shutdown requires:\n" +
+                        "• File and Printer Sharing enabled on target\n" +
+                        "• Target firewall rule \"Remote Shutdown\" active\n" +
+                        "• Admin rights on the target machine",
+                        $"{label} error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    UpdateStatusBar($"{label} command sent to {computer.Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending {label} command:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private bool OpenNetworkPath(string path)
         {
             try
@@ -642,43 +818,26 @@ namespace WOLManager
             }
             catch
             {
-                // Metoda 2: Explorer z parametrem /n (nowe okno)
+                // Metoda 2: Explorer z parametrem /select (ArgumentList — brak injection)
                 try
                 {
                     var explorerProcess = new ProcessStartInfo
                     {
                         FileName = "explorer.exe",
-                        Arguments = $"/n,\"{path}\"",
                         UseShellExecute = true
                     };
+                    explorerProcess.ArgumentList.Add(path);
                     Process.Start(explorerProcess);
                     return true;
                 }
                 catch
                 {
-                    // Metoda 3: CMD start z /D (ustawienie katalogu roboczego)
-                    try
-                    {
-                        var cmdProcess = new ProcessStartInfo
-                        {
-                            FileName = "cmd.exe",
-                            Arguments = $"/c start \"Zasób sieciowy\" /D \"{System.Environment.GetFolderPath(System.Environment.SpecialFolder.System)}\" explorer.exe \"{path}\"",
-                            UseShellExecute = true,
-                            WindowStyle = ProcessWindowStyle.Hidden,
-                            CreateNoWindow = true
-                        };
-                        Process.Start(cmdProcess);
-                        return true;
-                    }
-                    catch
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
 
-        private void BtnNetworkShare_Click(object sender, EventArgs e)
+        private async void BtnNetworkShare_Click(object sender, EventArgs e)
         {
             if (dgvComputers.CurrentRow?.DataBoundItem is Computer computer)
             {
@@ -692,7 +851,7 @@ namespace WOLManager
 
                     // Ustal host do UNC (bez portu) i oceń czy to adres prywatny (LAN) czy publiczny (WAN)
                     string hostForUnc = GetUncTargetHost(computer);
-                    bool isPrivate = IsPrivateHost(hostForUnc);
+                    bool isPrivate = await IsPrivateHostAsync(hostForUnc);
 
                     // Jeśli LAN i brak nazwy komputera, poproś o wpisanie nazwy (ComputerNameInputForm)
                     string overrideName = null;
@@ -920,7 +1079,8 @@ namespace WOLManager
         }
 
         // Określa czy host to adres prywatny (LAN). Jeśli host to nazwa, sprawdza zresolvowane adresy.
-        private bool IsPrivateHost(string host)
+        // Async — DNS może blokować UI przez kilka sekund na wolnym/niedostępnym serwerze.
+        private async Task<bool> IsPrivateHostAsync(string host)
         {
             if (string.IsNullOrWhiteSpace(host)) return false;
 
@@ -931,7 +1091,7 @@ namespace WOLManager
 
             try
             {
-                var addrs = Dns.GetHostAddresses(host);
+                var addrs = await Dns.GetHostAddressesAsync(host);
                 return addrs.Any(a => a.AddressFamily == AddressFamily.InterNetwork && IsPrivateIpAddress(a));
             }
             catch
@@ -1048,7 +1208,9 @@ namespace WOLManager
         public int Port { get; set; } = 9;
         public string MacAddress { get; set; } = "";
         public string Broadcast { get; set; } = "";
-        public string PingType { get; set; } = "ICMP"; // "ICMP", "TCP", etc.
+        public string PingType { get; set; } = "ICMP";
+        public string SshUser { get; set; } = "";
+        public string Notes { get; set; } = "";
         public bool IsOnline { get; set; }
     }
 }

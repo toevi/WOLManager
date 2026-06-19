@@ -9,42 +9,57 @@ namespace WOLManager
         private System.Windows.Forms.TextBox txtMac;
         private System.Windows.Forms.TextBox txtBroadcast;
         private System.Windows.Forms.ComboBox cmbPingType;
+        private System.Windows.Forms.TextBox txtSshUser;
+        private System.Windows.Forms.TextBox txtNotes;
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Label lblNameInfo;
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null)) components.Dispose();
+            base.Dispose(disposing);
+        }
+
         private void InitializeComponent()
         {
-            txtName = new TextBox();
-            txtIP = new TextBox();
-            numPort = new NumericUpDown();
-            txtMac = new TextBox();
+            txtName    = new TextBox();
+            txtIP      = new TextBox();
+            numPort    = new NumericUpDown();
+            txtMac     = new TextBox();
             txtBroadcast = new TextBox();
-            cmbPingType = new ComboBox();
-            btnOK = new Button();
-            btnCancel = new Button();
+            cmbPingType  = new ComboBox();
+            txtSshUser = new TextBox();
+            txtNotes   = new TextBox();
+            btnOK      = new Button();
+            btnCancel  = new Button();
             lblNameInfo = new Label();
             ((System.ComponentModel.ISupportInitialize)numPort).BeginInit();
             SuspendLayout();
-            // 
+
+            // lblNameInfo
+            lblNameInfo.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold);
+            lblNameInfo.ForeColor = Color.DarkBlue;
+            lblNameInfo.Location = new Point(12, 12);
+            lblNameInfo.Name = "lblNameInfo";
+            lblNameInfo.Size = new Size(400, 40);
+            lblNameInfo.Text = "COMPUTER NAME (REQUIRED):\r\nMust be identical to network name!\r\nor use Add Scan in the main window";
+
             // txtName
-            // 
             txtName.Location = new Point(12, 55);
             txtName.Name = "txtName";
             txtName.PlaceholderText = "Enter network computer name";
             txtName.Size = new Size(400, 23);
             txtName.TabIndex = 1;
-            // 
+
             // txtIP
-            // 
             txtIP.Location = new Point(12, 84);
             txtIP.Name = "txtIP";
             txtIP.PlaceholderText = "IP address (optional, but name is more important)";
             txtIP.Size = new Size(400, 23);
             txtIP.TabIndex = 2;
-            // 
+
             // numPort
-            // 
             numPort.Location = new Point(12, 113);
             numPort.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
             numPort.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
@@ -52,64 +67,64 @@ namespace WOLManager
             numPort.Size = new Size(400, 23);
             numPort.TabIndex = 3;
             numPort.Value = new decimal(new int[] { 9, 0, 0, 0 });
-            // 
+
             // txtMac
-            // 
             txtMac.Location = new Point(12, 142);
             txtMac.Name = "txtMac";
             txtMac.PlaceholderText = "MAC address (XX:XX:XX:XX:XX:XX)";
             txtMac.Size = new Size(400, 23);
             txtMac.TabIndex = 4;
-            // 
+
             // txtBroadcast
-            // 
             txtBroadcast.Location = new Point(12, 171);
             txtBroadcast.Name = "txtBroadcast";
             txtBroadcast.PlaceholderText = "Broadcast address (e.g. 192.168.1.255)";
             txtBroadcast.Size = new Size(400, 23);
             txtBroadcast.TabIndex = 5;
-            // 
+
             // cmbPingType
-            // 
             cmbPingType.Items.AddRange(new object[] { "ICMP", "TCP" });
             cmbPingType.Location = new Point(12, 200);
             cmbPingType.Name = "cmbPingType";
             cmbPingType.Size = new Size(400, 23);
             cmbPingType.TabIndex = 6;
-            //
+
+            // txtSshUser
+            txtSshUser.Location = new Point(12, 233);
+            txtSshUser.Name = "txtSshUser";
+            txtSshUser.PlaceholderText = "SSH username (optional, e.g. admin or root)";
+            txtSshUser.Size = new Size(400, 23);
+            txtSshUser.TabIndex = 7;
+
+            // txtNotes
+            txtNotes.Location = new Point(12, 262);
+            txtNotes.Multiline = true;
+            txtNotes.Name = "txtNotes";
+            txtNotes.PlaceholderText = "Notes (optional) — e.g. role, location, owner";
+            txtNotes.ScrollBars = ScrollBars.Vertical;
+            txtNotes.Size = new Size(400, 55);
+            txtNotes.TabIndex = 8;
+
             // btnOK
-            //
-            btnOK.Location = new Point(120, 239);
+            btnOK.Location = new Point(120, 329);
             btnOK.Name = "btnOK";
             btnOK.Size = new Size(80, 30);
-            btnOK.TabIndex = 7;
+            btnOK.TabIndex = 9;
             btnOK.Text = "OK";
             btnOK.Click += btnOK_Click;
-            //
+
             // btnCancel
-            //
-            btnCancel.Location = new Point(220, 239);
+            btnCancel.Location = new Point(220, 329);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 30);
-            btnCancel.TabIndex = 8;
+            btnCancel.TabIndex = 10;
             btnCancel.Text = "Cancel";
             btnCancel.Click += btnCancel_Click;
-            // 
-            // lblNameInfo
-            // 
-            lblNameInfo.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold);
-            lblNameInfo.ForeColor = Color.DarkBlue;
-            lblNameInfo.Location = new Point(12, 12);
-            lblNameInfo.Name = "lblNameInfo";
-            lblNameInfo.Size = new Size(400, 40);
-            lblNameInfo.TabIndex = 0;
-            lblNameInfo.Text = "COMPUTER NAME (REQUIRED):\r\nMust be identical to network name!\r\nor use Add Scan in the main window";
-            // 
+
             // ComputerEditForm
-            // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(424, 284);
+            ClientSize = new Size(424, 374);
             Controls.Add(lblNameInfo);
             Controls.Add(txtName);
             Controls.Add(txtIP);
@@ -117,6 +132,8 @@ namespace WOLManager
             Controls.Add(txtMac);
             Controls.Add(txtBroadcast);
             Controls.Add(cmbPingType);
+            Controls.Add(txtSshUser);
+            Controls.Add(txtNotes);
             Controls.Add(btnOK);
             Controls.Add(btnCancel);
             FormBorderStyle = FormBorderStyle.FixedDialog;

@@ -23,7 +23,9 @@ namespace WOLManager
                 Port = computer.Port,
                 MacAddress = computer.MacAddress,
                 Broadcast = computer.Broadcast,
-                PingType = computer.PingType
+                PingType = computer.PingType,
+                SshUser = computer.SshUser,
+                Notes = computer.Notes
             };
             txtName.Text = Computer.Name;
             txtIP.Text = Computer.IP;
@@ -31,6 +33,8 @@ namespace WOLManager
             txtMac.Text = Computer.MacAddress;
             txtBroadcast.Text = Computer.Broadcast;
             cmbPingType.SelectedItem = Computer.PingType;
+            txtSshUser.Text = Computer.SshUser;
+            txtNotes.Text = Computer.Notes;
         }
 
         private bool IsValidMacAddress(string mac)
@@ -78,6 +82,8 @@ namespace WOLManager
             Computer.MacAddress = txtMac.Text.Trim();
             Computer.Broadcast = txtBroadcast.Text.Trim();
             Computer.PingType = cmbPingType.SelectedItem?.ToString() ?? "ICMP";
+            Computer.SshUser = txtSshUser.Text.Trim();
+            Computer.Notes = txtNotes.Text.Trim();
             DialogResult = DialogResult.OK;
             Close();
         }
