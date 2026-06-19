@@ -1,0 +1,20 @@
+# Security Policy
+
+## Supported versions
+
+| Version | Supported |
+|---------|-----------|
+| 1.1.x   | ✅        |
+| < 1.1   | ❌        |
+
+## Reporting a vulnerability
+
+**Do not open a public issue for security vulnerabilities.**
+
+Please report security issues by emailing **tomek.maselko@gmail.com** with:
+
+- A description of the vulnerability
+- Steps to reproduce
+- Potential impact
+
+You will receive a response within 7 days. If the issue is confirmed, a fix will be released as soon as possible and you will be credited in the release notes (unless you prefer to remain anonymous).
