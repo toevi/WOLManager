@@ -1,30 +1,50 @@
 # WOL Manager
 
-A Windows desktop tool for managing Wake-on-LAN and remote access to computers on your local network.
+A Windows desktop tool for network administrators — Wake-on-LAN, remote power control, RDP, SSH, network share access, and port scanning, all in one place.
+
+![Main window](screenshots/main-window.png)
 
 ## Features
 
-- **Wake on LAN** — sends magic packets through all active network interfaces (multi-homed support)
-- **Remote Power** — Restart and Shutdown remote Windows computers
-- **RDP** — launch Remote Desktop Connection with one click
-- **SSH** — open SSH session in Windows Terminal or cmd
-- **Network Share** — browse shared folders in Explorer
-- **Info / Port Scan** — ping target, detect OS from TTL, scan 20 common TCP ports in parallel
-- **Network Scanner** — auto-discover Windows computers on LAN (ping + ARP + hostname resolution)
-- **System Tray** — minimize to tray, balloon notification when Wake-on-LAN target comes online
-- **Notes** — per-computer notes field (role, location, owner)
-- **Config** — stored in `%APPDATA%\WOLManager\computers.json`
+| Feature | Description |
+|---|---|
+| **Wake on LAN** | Sends magic packets through all active network interfaces (multi-homed / Hyper-V safe) |
+| **Restart / Shutdown** | Remote power commands via `shutdown.exe` with confirmation dialog |
+| **RDP** | Launches Remote Desktop Connection with one click |
+| **SSH** | Opens Windows Terminal or cmd with `ssh [user@]host`; username saved per computer |
+| **Network Share** | Browses `\\hostname` in Explorer; credential dialog on failure |
+| **Info / Port Scan** | Pings host, detects OS from TTL, scans 20 common TCP ports in parallel |
+| **Network Scanner** | Auto-discovers Windows computers on LAN (ping + ARP + hostname) |
+| **System Tray** | Minimize to tray; balloon notification when a woken computer comes online |
+| **Notes** | Free-text notes per computer (role, location, owner) |
+| **Status polling** | Online / offline status refreshed every 10 seconds |
+
+## Screenshots
+
+### Main window
+![Main window](screenshots/main-window.png)
+
+### Info / Port Scan
+Pings the target, guesses the OS from TTL, and scans 20 common TCP ports in parallel.
+
+![Info and Port Scan](screenshots/info-port-scan.png)
+
+### Network Scanner
+Auto-discovers active computers on the LAN — click **Scan Network**, tick the ones you want, and add them in bulk.
+
+![Network Scanner](screenshots/network-scanner.png)
 
 ## Requirements
 
-- Windows 10 / 11
+- Windows 10 / 11 (x64)
 - [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0)
-- OpenSSH Client (optional, for SSH feature) — Settings → Apps → Optional features
+- OpenSSH Client *(optional, for SSH)* — Settings → Apps → Optional features → OpenSSH Client
 
 ## Installation
 
-Download `WOLManager-Setup-1.0.exe` from [Releases](../../releases) and run it.  
-The installer requires admin rights (needed to place files in Program Files).
+Download `WOLManager-Setup-1.1.exe` from [Releases](../../releases/latest) and run it.  
+The installer places files in `Program Files` (requires admin rights).  
+Configuration is stored in `%APPDATA%\WOLManager\computers.json` — survives reinstalls and updates.
 
 ## Building from source
 
@@ -34,29 +54,38 @@ cd WOLManager
 dotnet build -c Release
 ```
 
+Publish self-contained single-file exe:
+```
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+```
+
 ## Usage
 
-1. Add computers manually (**Add**) or auto-discover via **Add Scan**
-2. Select a computer in the list
-3. Use the buttons on the right panel:
-   - **Wake Up** — sends WOL magic packet (requires MAC address)
-   - **Restart / Shutdown** — remote power commands (requires admin share access)
-   - **RDP** — opens mstsc.exe
-   - **SSH** — opens terminal with `ssh [user@]host`
-   - **Network Share** — opens `\\hostname` in Explorer
-   - **Info / Port Scan** — shows ping, OS hint, and open ports
+1. **Add computers** — click **Add** (manual) or **Add Scan** (auto-discover)
+2. **Wake a computer** — double-click the row, or select it and click **Wake Up**
+3. **Remote access** — select a computer, then use **RDP / SSH / Network Share**
+4. **Port scan** — select a computer, click **Info / Port Scan**
+5. **Edit SSH username** — click **Edit**, fill in *SSH username* field — it will be used automatically next time
 
 ### Wake on LAN tips
 
-- MAC address is required (format `AA:BB:CC:DD:EE:FF`)
-- Target computer must have WOL enabled in BIOS/UEFI and network adapter settings
+- MAC address is required (`AA:BB:CC:DD:EE:FF`)
+- WOL must be enabled in BIOS/UEFI and in the network adapter power management settings
+- **Disable Fast Startup**: Control Panel → Power Options → Choose what the power buttons do → Turn on fast startup: **OFF**
 - Works on the same LAN segment; for cross-subnet WOL configure directed broadcast on your router
+
+### Remote Restart / Shutdown tips
+
+- File and Printer Sharing must be enabled on the target
+- Firewall rule **Remote Shutdown** must be active on the target
+- You need administrator rights on the target machine
 
 ## Security
 
-- All external processes use `ProcessStartInfo.ArgumentList` — no shell argument injection
-- Network operations use .NET socket APIs directly (no shell commands for ping/port scan)
-- Config file location: `%APPDATA%\WOLManager\computers.json` (user profile, not Program Files)
+- All external processes launched via `ProcessStartInfo.ArgumentList` — no shell string interpolation
+- SSH target validated with a strict regex before reaching any terminal emulator (blocks shell metacharacters even from attacker-controlled DNS hostnames)
+- Port scan uses pure .NET `TcpClient.ConnectAsync` — no shell, no data read, port is a typed `int`
+- Config stored in `%APPDATA%\WOLManager\` (not Program Files — no elevated writes at runtime)
 
 ## License
 
