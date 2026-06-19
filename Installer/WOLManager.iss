@@ -1,10 +1,10 @@
-; Skrypt instalatora Inno Setup dla WOLMenager (Wake On LAN Manager)
-; Kompilacja:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" WOLMenager.iss
+; Skrypt instalatora Inno Setup dla WOLManager (Wake On LAN Manager)
+; Kompilacja:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" WOLManager.iss
 
-#define MyAppName "WOL Menager"
+#define MyAppName "WOL Manager"
 #define MyAppVersion "1.0"
 #define MyAppPublisher "tmfgroup"
-#define MyAppExeName "WOLMenager.exe"
+#define MyAppExeName "WOLManager.exe"
 
 [Setup]
 ; Unikalny identyfikator aplikacji (nie zmieniać przy aktualizacjach)
@@ -30,7 +30,7 @@ UninstallDisplayName={#MyAppName}
 
 ; --- Wyjście ---
 OutputDir=.\Output
-OutputBaseFilename=WOLMenager-Setup-{#MyAppVersion}
+OutputBaseFilename=WOLManager-Setup-{#MyAppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

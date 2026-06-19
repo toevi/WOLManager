@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace WOLMenager
+namespace WOLManager
 {
     public partial class Form1 : Form
     {
@@ -17,8 +17,12 @@ namespace WOLMenager
         // Konfiguracja przechowywana w profilu użytkownika (%APPDATA%), nie w katalogu roboczym/Program Files
         private static readonly string CONFIG_FILE = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WOLManager", "computers.json");
+        // Stara lokalizacja %APPDATA% (sprzed zmiany nazwy WOLMenager->WOLManager) – do jednorazowej migracji
+        private static readonly string LEGACY_APPDATA_CONFIG = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "WOLMenager", "computers.json");
-        // Stara lokalizacja (katalog roboczy) – używana tylko do jednorazowej migracji
+        // Najstarsza lokalizacja (katalog roboczy) – również do jednorazowej migracji
         private const string LEGACY_CONFIG_FILE = "computers.json";
         private System.Windows.Forms.Timer statusTimer;
 
@@ -168,8 +172,12 @@ namespace WOLMenager
             try
             {
                 var path = CONFIG_FILE;
-                // Jednorazowa migracja ze starej lokalizacji (katalog roboczy)
-                if (!File.Exists(path) && File.Exists(LEGACY_CONFIG_FILE))
+                // Jednorazowa migracja: najpierw stary folder %APPDATA%\WOLMenager, potem katalog roboczy
+                if (!File.Exists(path) && File.Exists(LEGACY_APPDATA_CONFIG))
+                {
+                    path = LEGACY_APPDATA_CONFIG;
+                }
+                else if (!File.Exists(path) && File.Exists(LEGACY_CONFIG_FILE))
                 {
                     path = LEGACY_CONFIG_FILE;
                 }

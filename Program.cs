@@ -1,4 +1,4 @@
-namespace WOLMenager
+namespace WOLManager
 {
     internal static class Program
     {

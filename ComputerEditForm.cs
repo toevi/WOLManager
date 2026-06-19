@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace WOLMenager
+namespace WOLManager
 {
     public partial class ComputerEditForm : Form
     {

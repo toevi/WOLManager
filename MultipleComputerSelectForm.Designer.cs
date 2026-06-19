@@ -1,4 +1,4 @@
-namespace WOLMenager
+namespace WOLManager
 {
     partial class MultipleComputerSelectForm
     {

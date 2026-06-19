@@ -7,7 +7,7 @@ using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace WOLMenager
+namespace WOLManager
 {
     public partial class MultipleComputerSelectForm : Form
     {
