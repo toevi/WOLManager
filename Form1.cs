@@ -14,15 +14,15 @@ namespace WOLManager
     {
         private List<Computer> computers = new();
         private BindingSource bindingSource = new();
-        // Konfiguracja przechowywana w profilu użytkownika (%APPDATA%), nie w katalogu roboczym/Program Files
+        // Config stored in user profile (%APPDATA%), not in the working directory or Program Files
         private static readonly string CONFIG_FILE = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "WOLManager", "computers.json");
-        // Stara lokalizacja %APPDATA% (sprzed zmiany nazwy WOLMenager->WOLManager) – do jednorazowej migracji
+        // Legacy path in %APPDATA% (before rename WOLMenager->WOLManager) — migrated once on first run
         private static readonly string LEGACY_APPDATA_CONFIG = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "WOLMenager", "computers.json");
-        // Najstarsza lokalizacja (katalog roboczy) – również do jednorazowej migracji
+        // Oldest legacy path (working directory) — also migrated once
         private const string LEGACY_CONFIG_FILE = "computers.json";
         private System.Windows.Forms.Timer statusTimer;
 
@@ -98,13 +98,13 @@ namespace WOLManager
             notifyIcon1.Visible = false;
         }
 
-        // 0 = brak sprawdzania, 1 = trwa. Zapobiega nakładaniu się przebiegów
-        // (timer + start + przycisk Refresh), które migotały statusem w siatce.
+        // 0 = idle, 1 = running. Prevents concurrent status-check runs
+        // (timer + startup + Refresh button) that caused status flickering in the grid.
         private int _statusChecking;
 
         private async Task CheckAllComputersStatus()
         {
-            // Pomiń, jeśli poprzednie sprawdzanie jeszcze trwa
+            // Skip if a previous check is still in progress
             if (Interlocked.CompareExchange(ref _statusChecking, 1, 0) != 0)
                 return;
 
@@ -112,7 +112,7 @@ namespace WOLManager
             {
                 UpdateStatusBar("Checking computers status...");
 
-                // Zrzut listy na czas przebiegu (lista może się zmienić w trakcie)
+                // Snapshot the list — it may change while the check is running
                 var snapshot = computers.ToList();
 
                 var tasks = snapshot.Select(async computer =>
@@ -123,7 +123,7 @@ namespace WOLManager
 
                 await Task.WhenAll(tasks);
 
-                // Aktualizuj UI w głównym wątku
+                // Refresh the grid on the UI thread
                 if (InvokeRequired)
                 {
                     Invoke(new Action(() => bindingSource.ResetBindings(false)));
@@ -175,7 +175,7 @@ namespace WOLManager
         private void InitializeComputersList()
         {
             bindingSource.DataSource = computers;
-            // Konfiguruj kolumny po przypisaniu danych
+            // Configure columns after data source is bound
             if (computers.Count > 0)
             {
                 ConfigureDataGridView();
@@ -223,16 +223,16 @@ namespace WOLManager
             }
             catch (Exception ex)
             {
-                // Nie połykaj błędu po cichu – użytkownik traciłby dane bez ostrzeżenia
+                // Do not swallow the error silently — user would lose data without knowing
                 MessageBox.Show($"Failed to save configuration:\n{ex.Message}", "Save error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        // Wake-on-LAN: wysyła magic packet przez KAŻDĄ aktywną kartę IPv4 osobno,
-        // na limited broadcast (255.255.255.255) i skonfigurowany directed broadcast.
-        // Dzięki temu pakiet wychodzi realną kartą LAN, a nie np. wirtualną (Hyper-V/VPN),
-        // i nie zależy od tego, czy sprzęt sieciowy flooduje directed broadcast.
+        // Wake-on-LAN: sends the magic packet through EVERY active IPv4 interface separately,
+        // targeting both limited broadcast (255.255.255.255) and the configured directed broadcast.
+        // This ensures the packet leaves via the real LAN NIC, not a virtual one (Hyper-V/VPN),
+        // and does not rely on the network hardware flooding directed broadcasts.
         private void WakeOnLan(Computer computer)
         {
             try
@@ -273,7 +273,7 @@ namespace WOLManager
                 {
                     try
                     {
-                        // Bind do konkretnej karty => pakiet wychodzi właśnie tą kartą
+                        // Bind to a specific NIC so the packet exits through that interface
                         using var client = new UdpClient(new IPEndPoint(localIp, 0)) { EnableBroadcast = true };
                         foreach (var ep in targets)
                             client.Send(packet, packet.Length, ep);
@@ -282,7 +282,7 @@ namespace WOLManager
                     catch { /* spróbuj kolejną kartę */ }
                 }
 
-                // Fallback, gdyby nie udało się powiązać z żadną kartą
+                // Fallback if binding to any specific NIC failed
                 if (!sentAny)
                 {
                     using var client = new UdpClient { EnableBroadcast = true };
@@ -329,8 +329,8 @@ namespace WOLManager
 
                 if (string.Equals(computer.PingType, "ICMP", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Ponów do 2 razy – pojedynczy zgubiony pakiet ICMP nie powinien
-                    // przełączać hosta na "offline" (to powodowało migotanie statusu)
+                    // Retry up to 2 times — a single dropped ICMP packet should not
+                    // flip the host to "offline" (this was causing status flickering)
                     using Ping ping = new();
                     for (int attempt = 0; attempt < 2; attempt++)
                     {
@@ -345,7 +345,7 @@ namespace WOLManager
                 }
                 else if (string.Equals(computer.PingType, "TCP", StringComparison.OrdinalIgnoreCase))
                 {
-                    var (host, port) = ParseHostPort(computer.IP, 3389); // domyślnie RDP
+                    var (host, port) = ParseHostPort(computer.IP, 3389); // default to RDP port
                     return await IsTcpOpen(host, port, 1500);
                 }
             }
@@ -401,21 +401,19 @@ namespace WOLManager
                 WakeOnLan(computer);
                 UpdateStatusBar($"WOL packet sent to {computer.Name}");
 
-                // Pokaż małe okno informacyjne o wybudzeniu
-                MessageBox.Show($"⚡ Wybudzono > {computer.Name}", 
-                    "Wake-on-LAN", 
-                    MessageBoxButtons.OK, 
+                MessageBox.Show($"⚡ Wybudzono > {computer.Name}",
+                    "Wake-on-LAN",
+                    MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
 
-                // Opcjonalnie: sprawdź czy komputer się włączył po chwili
-                await Task.Delay(3000); // czekaj 3 sekundy
+                await Task.Delay(3000); // wait 3 s then check if the machine responded
                 computer.IsOnline = await IsComputerOnline(computer);
                 bindingSource.ResetBindings(false);
                 
                 if (computer.IsOnline)
                 {
                     UpdateStatusBar($"{computer.Name} is online");
-                    // Powiadomienie w zasobniku — przydatne gdy apka jest zminimalizowana
+                    // Tray balloon — useful when the app is minimized
                     notifyIcon1.BalloonTipTitle = "WOL Manager";
                     notifyIcon1.BalloonTipText = $"{computer.Name} is now online!";
                     notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
@@ -434,10 +432,8 @@ namespace WOLManager
 
         private async void DgvComputers_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            // Sprawdź czy kliknięto na prawidłowy wiersz (nie na nagłówek)
             if (e.RowIndex >= 0 && dgvComputers.Rows[e.RowIndex].DataBoundItem is Computer computer)
             {
-                // Wybudź komputer
                 await WakeUpComputer(computer);
             }
         }
@@ -471,7 +467,7 @@ namespace WOLManager
                         return;
                     }
 
-                    // Pokaż formularz postępu
+                    // Show progress form
                     using var progressForm = new BatchAddProgressForm();
                     progressForm.Show(this);
                     
@@ -487,10 +483,9 @@ namespace WOLManager
                         
                         try
                         {
-                            // Aktualizuj postęp
                             progressForm.UpdateProgress(i + 1, selectedComputers.Count, networkComputer.Name);
-                            
-                            // Sprawdź czy komputer już nie istnieje
+
+                            // Skip if already in list
                             if (computers.Any(c => c.Name.Equals(networkComputer.Name, StringComparison.OrdinalIgnoreCase) ||
                                                  (!string.IsNullOrEmpty(c.IP) && !string.IsNullOrEmpty(networkComputer.IP) && 
                                                   c.IP.Equals(networkComputer.IP, StringComparison.OrdinalIgnoreCase))))
@@ -500,12 +495,11 @@ namespace WOLManager
                                 continue;
                             }
 
-                            // Konwertuj NetworkComputer na Computer
                             var computer = new Computer
                             {
                                 Name = networkComputer.Name,
                                 IP = networkComputer.IP,
-                                Port = 9, // domyślny port WOL
+                                Port = 9, // default WOL port
                                 MacAddress = networkComputer.MacAddress ?? "",
                                 Broadcast = networkComputer.Broadcast ?? CalculateBroadcast(networkComputer.IP),
                                 PingType = "ICMP",
@@ -517,7 +511,7 @@ namespace WOLManager
                             
                             UpdateStatusBar($"Added {computer.Name} ({addedCount}/{selectedComputers.Count})");
                             
-                            // Krótka pauza żeby użytkownik widział postęp
+                            // Brief delay so the user can see progress
                             await Task.Delay(200);
                         }
                         catch (Exception ex)
@@ -526,14 +520,12 @@ namespace WOLManager
                         }
                     }
 
-                    // Zakończ postęp
                     progressForm.SetCompleted(addedCount, selectedComputers.Count);
-                    
-                    // Odśwież UI i zapisz
+
                     bindingSource.ResetBindings(false);
                     SaveComputers();
-                    
-                    // Sprawdź status nowo dodanych komputerów w tle
+
+                    // Check status of newly added computers in the background
                     UpdateStatusBar("Checking status of new computers...");
                     _ = Task.Run(async () => await CheckAllComputersStatus());
                     
@@ -546,7 +538,7 @@ namespace WOLManager
                     if (errors.Count > 0)
                     {
                         summary += $"\n❌ Errors: {errors.Count} computers";
-                        if (errors.Count <= 3) // Pokaż tylko pierwsze kilka błędów
+                        if (errors.Count <= 3) // show only the first few errors
                         {
                             summary += "\nErrors:\n" + string.Join("\n", errors.Take(3));
                             if (errors.Count > 3)
@@ -645,9 +637,9 @@ namespace WOLManager
             }
         }
 
-        // Dopuszcza litery, cyfry i znaki bezpieczne w SSH target (hostname + username).
-        // Wyklucza wszystkie metaznaki shellu — ochrona przed injection w fallbacku cmd.exe
-        // (hostname może pochodzić z DNS kontrolowanego przez atakującego).
+        // Allows letters, digits and safe SSH target characters (hostname + username).
+        // Excludes all shell metacharacters — guards against injection in the cmd.exe fallback
+        // (hostname may originate from attacker-controlled DNS).
         private static readonly System.Text.RegularExpressions.Regex _sshTargetRegex =
             new(@"^[a-zA-Z0-9._@%:-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
@@ -681,8 +673,8 @@ namespace WOLManager
 
             try
             {
-                // Próba 1: Windows Terminal — `wt -- ssh user@host`
-                // `--` sygnalizuje koniec argumentów wt i początek komendy terminala.
+                // Attempt 1: Windows Terminal — `wt -- ssh user@host`
+                // `--` signals end of wt arguments and start of the terminal command.
                 SshLaunchWT(target);
                 UpdateStatusBar($"SSH → {target}");
             }
@@ -690,8 +682,8 @@ namespace WOLManager
             {
                 try
                 {
-                    // Próba 2: cmd.exe /k ssh — klasyczne okno konsoli.
-                    // target zwalidowany (brak metaznaków cmd), interpolacja bezpieczna.
+                    // Attempt 2: cmd.exe /k ssh — classic console window.
+                    // target is validated (no cmd metacharacters), interpolation is safe.
                     SshLaunchCmd(target);
                     UpdateStatusBar($"SSH (cmd) → {target}");
                 }
@@ -824,7 +816,7 @@ namespace WOLManager
         {
             try
             {
-                // Metoda 1: Bezpośredni ShellExecute na ścieżce UNC (najprostsze)
+                // Method 1: direct ShellExecute on UNC path
                 var psi = new ProcessStartInfo
                 {
                     FileName = path,
@@ -868,11 +860,11 @@ namespace WOLManager
                         return;
                     }
 
-                    // Ustal host do UNC (bez portu) i oceń czy to adres prywatny (LAN) czy publiczny (WAN)
+                    // Resolve the UNC host (strip port) and determine if it is private (LAN) or public (WAN)
                     string hostForUnc = GetUncTargetHost(computer);
                     bool isPrivate = await IsPrivateHostAsync(hostForUnc);
 
-                    // Jeśli LAN i brak nazwy komputera, poproś o wpisanie nazwy (ComputerNameInputForm)
+                    // On LAN with no computer name, prompt the user to enter one
                     string overrideName = null;
                     if (isPrivate && string.IsNullOrWhiteSpace(computer.Name))
                     {
@@ -884,7 +876,7 @@ namespace WOLManager
                         }
                     }
 
-                    // Dla LAN preferuj nazwę (łatwiejsza autoryzacja SMB), dla WAN preferuj IP/host
+                    // On LAN prefer name (easier SMB auth); on WAN prefer IP/host
                     string preferredName = overrideName ?? computer.Name;
                     string targetAddress = isPrivate
                         ? (!string.IsNullOrWhiteSpace(preferredName) ? preferredName : hostForUnc)
@@ -894,14 +886,14 @@ namespace WOLManager
 
                     UpdateStatusBar($"Opening resource: {networkPath} for {computer.Name} ({(isPrivate ? "LAN" : "WAN")})");
 
-                    // Najpierw spróbuj bezpośrednio
+                    // Try direct connection first
                     if (OpenNetworkPath(networkPath))
                     {
                         UpdateStatusBar($"Network resource opened for {computer.Name}");
                         return;
                     }
 
-                    // Przygotuj ścieżkę alternatywną (zamiana nazwy i IP/host)
+                    // Prepare alternative path (swap name and IP/host)
                     string alternativePath = null;
                     if (targetAddress == hostForUnc && !string.IsNullOrWhiteSpace(preferredName))
                     {
@@ -926,7 +918,7 @@ namespace WOLManager
                         }
                     }
 
-                    // Jeżeli LAN i wcześniejsze próby nie powiodły się, pozwól użytkownikowi podać/zmienić nazwę i spróbuj ponownie
+                    // On LAN, if all attempts failed, let the user enter/correct the name and retry
                     if (isPrivate)
                     {
                         using var retryNameDlg = new ComputerNameInputForm();
@@ -942,7 +934,7 @@ namespace WOLManager
                         }
                     }
 
-                    // Jeśli nadal nie działa, pokaż rozszerzone opcje
+                    // Still failing — show extended options dialog
                     var ask = MessageBox.Show(
                         $"Cannot open resource automatically.\n" +
                         $"Tried: {networkPath}" +
@@ -957,13 +949,13 @@ namespace WOLManager
 
                     if (ask == DialogResult.Cancel)
                     {
-                        // Otwórz Explorer w sekcji Sieć
+                        // Open Explorer at Network section
                         OpenNetworkExplorer();
                         UpdateStatusBar("Network Explorer opened - check available computers");
                         return;
                     }
 
-                    // Przygotuj warianty ścieżek do instrukcji
+                    // Build path variants for the manual instructions message
                     var nameOption = !string.IsNullOrWhiteSpace(preferredName) ? $"\\\\{preferredName}" : "no name";
                     var ipOption = $"\\\\{hostForUnc}";
 
@@ -995,7 +987,7 @@ namespace WOLManager
 
                         MessageBox.Show(instructions, "Manual access instructions", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        // Skopiuj preferowaną ścieżkę do schowka (zależnie od LAN/WAN)
+                        // Copy preferred path to clipboard (LAN = name, WAN = IP)
                         var preferredPath = isPrivate && !string.IsNullOrWhiteSpace(preferredName) ? nameOption : ipOption;
                         try
                         {
@@ -1016,7 +1008,7 @@ namespace WOLManager
                             using var credDlg = new NetworkCredentialForm(targetAddress);
                             if (credDlg.ShowDialog(this) == DialogResult.OK)
                             {
-                                // Wybierz cel do NET USE zależnie od LAN/WAN
+                                // Choose NET USE target based on LAN/WAN
                                 var connectTarget = isPrivate && !string.IsNullOrWhiteSpace(preferredName) ? nameOption : ipOption;
                                 var netProcess = new ProcessStartInfo
                                 {
@@ -1026,8 +1018,8 @@ namespace WOLManager
                                     RedirectStandardOutput = true,
                                     RedirectStandardError = true
                                 };
-                                // ArgumentList escapuje każdy argument osobno – brak wstrzyknięcia argumentów
-                                // przez znaki specjalne w haśle/nazwie użytkownika (np. cudzysłów)
+                                // ArgumentList quotes each argument separately — no injection via
+                                // special characters in password or username (e.g. quotes)
                                 netProcess.ArgumentList.Add("use");
                                 netProcess.ArgumentList.Add(connectTarget);
                                 netProcess.ArgumentList.Add(credDlg.Password);
@@ -1036,13 +1028,13 @@ namespace WOLManager
 
                                 using var p = Process.Start(netProcess);
 
-                                // Czytaj strumienie PRZED WaitForExit – inaczej pełny bufor pipe
-                                // może zakleszczyć proces potomny
+                                // Read streams BEFORE WaitForExit — a full pipe buffer
+                                // would otherwise deadlock the child process
                                 var output = p?.StandardOutput.ReadToEnd() ?? "";
                                 var error = p?.StandardError.ReadToEnd() ?? "";
                                 p?.WaitForExit(5000);
 
-                                // Po próbie logowania otwórz Explorer
+                                // After NET USE attempt, try opening Explorer
                                 if (OpenNetworkPath(connectTarget))
                                 {
                                     UpdateStatusBar($"Connected to {computer.Name}");
@@ -1058,7 +1050,7 @@ namespace WOLManager
 
                                     MessageBox.Show(result, "NET USE result", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                                    // Skopiuj preferowaną ścieżkę do schowka
+                                    // Copy preferred path to clipboard
                                     var preferredPath = isPrivate && !string.IsNullOrWhiteSpace(preferredName) ? nameOption : ipOption;
                                     try
                                     {
@@ -1086,7 +1078,7 @@ namespace WOLManager
             }
         }
 
-        // Zwraca host (bez portu) odpowiedni do UNC, na podstawie IP lub nazwy
+        // Returns the host (port stripped) suitable for UNC path, from IP or name
         private string GetUncTargetHost(Computer computer)
         {
             if (!string.IsNullOrWhiteSpace(computer.IP))
@@ -1097,8 +1089,8 @@ namespace WOLManager
             return computer.Name;
         }
 
-        // Określa czy host to adres prywatny (LAN). Jeśli host to nazwa, sprawdza zresolvowane adresy.
-        // Async — DNS może blokować UI przez kilka sekund na wolnym/niedostępnym serwerze.
+        // Returns true if the host is a private (LAN) address. Resolves names via DNS if needed.
+        // Async — synchronous DNS can block the UI for several seconds on a slow/unreachable server.
         private async Task<bool> IsPrivateHostAsync(string host)
         {
             if (string.IsNullOrWhiteSpace(host)) return false;

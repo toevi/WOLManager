@@ -229,7 +229,7 @@ namespace WOLManager
 
                 if (token.IsCancellationRequested) return;
 
-                // ── Port scan — wszystkie równolegle, 1500ms timeout ──
+                // Port scan — all ports in parallel, 1500 ms timeout each
                 SetStatus($"Scanning {WellKnownPorts.Length} ports in parallel...");
 
                 var tasks = WellKnownPorts.Select(async (entry, idx) =>

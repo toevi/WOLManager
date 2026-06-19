@@ -113,12 +113,12 @@ namespace WOLManager
             foreach (var computer in allComputers.OrderBy(c => c.Name))
             {
                 var item = new ListViewItem();
-                item.Text = ""; // Pierwsza kolumna dla checkbox
+                item.Text = ""; // first column is the checkbox
                 item.SubItems.Add(computer.Name);
                 item.SubItems.Add(computer.IP);
                 
-                // Poka� lepszy status z informacj� o MAC
-                var status = !string.IsNullOrEmpty(computer.MacAddress) ? 
+                // Display status with MAC info
+                var status = !string.IsNullOrEmpty(computer.MacAddress) ?
                     "Windows (MAC found)" : "Windows (no MAC)";
                 item.SubItems.Add(status);
                 item.Tag = computer;
@@ -126,7 +126,7 @@ namespace WOLManager
                 listViewComputers.Items.Add(item);
             }
             
-            // Lepsze wyja�nienie dla u�ytkownika
+            // Give user a clear summary of what was found
             lblInstructions.Text = $"Found {allComputers.Count} Windows computers. Non-Windows devices (routers, printers) were filtered out. Select computers to add:";
             lblInstructions.Visible = true;
         }
@@ -144,14 +144,14 @@ namespace WOLManager
                 {
                     UpdateScanStatus($"Scanning network {network.BaseAddress}.x...");
                     
-                    // Skanuj w mniejszych grupach dla lepszej dok�adno�ci
+                    // Scan in smaller batches for better accuracy
                     var allIPs = new List<string>();
                     for (int i = 1; i <= 254; i++)
                     {
                         allIPs.Add($"{network.BaseAddress}.{i}");
                     }
                     
-                    // Przetwarzaj w grupach po 25 IP dla lepszej kontroli
+                    // Process in groups of 25 IPs for better control
                     var batchSize = 25;
                     var batches = allIPs
                         .Select((ip, index) => new { ip, index })
@@ -166,10 +166,10 @@ namespace WOLManager
                         processedBatches++;
                         UpdateScanStatus($"Processing batch {processedBatches}/{batches.Count} in {network.BaseAddress}.x...");
                         
-                        // Uruchom wszystkie ping'i w batchu r�wnolegle
+                        // Fire all pings in this batch in parallel
                         var batchTasks = batch.Select(ip => Task.Run(() => PingAndResolveComputer(ip))).ToArray();
                         
-                        // Poczekaj na wszystkie wyniki z timeout
+                        // Wait for all results
                         var batchResults = Task.WhenAll(batchTasks).Result;
                         var foundInBatch = batchResults.Where(c => c != null).ToList();
                         
@@ -180,14 +180,14 @@ namespace WOLManager
                             UpdateScanStatus($"Found {foundInBatch.Count} Windows computers in batch {processedBatches}");
                         }
                         
-                        // Kr�tka pauza mi�dzy batches
+                        // Brief pause between batches
                         Task.Delay(100).Wait();
                     }
                 }
                 
                 UpdateScanStatus($"Scan complete. Found {activeComputers.Count} Windows computers.");
                 
-                // Usu� duplikaty na podstawie IP
+                // Remove duplicates by IP
                 var uniqueComputers = activeComputers
                     .GroupBy(c => c.IP)
                     .Select(g => g.First())
@@ -225,13 +225,13 @@ namespace WOLManager
             try
             {
                 using var ping = new Ping();
-                var reply = ping.Send(ip, 2000); // Zwi�kszony timeout do 2 sekund
+                var reply = ping.Send(ip, 2000); // 2 s timeout
                 
                 if (reply.Status == IPStatus.Success)
                 {
                     var computer = new NetworkComputer { IP = ip };
                     
-                    // Spr�buj znale�� nazw� komputera
+                    // Try to resolve hostname
                     try
                     {
                         var hostEntry = System.Net.Dns.GetHostEntry(ip);
@@ -246,13 +246,13 @@ namespace WOLManager
                     
                     computer.Broadcast = CalculateBroadcast(ip);
                     
-                    // Sprawd� czy to Windows computer
+                    // Filter out non-Windows devices
                     if (!IsLikelyWindowsComputer(ip, computer.Name))
                     {
-                        return null; // Pomijaj urz�dzenia nie-Windows
+                        return null; // skip non-Windows devices
                     }
                     
-                    // Spr�buj znale�� MAC address (z wi�kszym timeout)
+                    // Try to get MAC address via ARP
                     try
                     {
                         computer.MacAddress = GetMacAddressByIP(ip);
@@ -271,16 +271,16 @@ namespace WOLManager
         {
             try
             {
-                // Test 1: Sprawd� czy nazwa komputera wygl�da jak Windows
+                // Test 1: check if the hostname looks like a Windows machine
                 if (!string.IsNullOrEmpty(name) && !name.StartsWith("PC-"))
                 {
-                    // Typowe nazwy Windows computers (nie routery/printery)
+                    // Typical Windows computer names (not routers/printers)
                     var windowsPatterns = new[] { "DESKTOP-", "LAPTOP-", "PC-", "WIN-", "WORKSTATION-" };
                     var nonWindowsPatterns = new[] { "ROUTER", "SWITCH", "ACCESS-POINT", "AP-", "PRINTER", "CANON", "HP-", "EPSON", "SAMSUNG", "BROTHER" };
                     
                     var upperName = name.ToUpper();
                     
-                    // Wykluczaj typowe urz�dzenia sieciowe
+                    // Exclude common network devices
                     foreach (var pattern in nonWindowsPatterns)
                     {
                         if (upperName.Contains(pattern))
@@ -288,19 +288,19 @@ namespace WOLManager
                     }
                 }
                 
-                // Test 2: Sprawd� czy odpowiada na typowe porty Windows
+                // Test 2: check for open Windows-specific ports
                 if (IsWindowsPortOpen(ip))
                 {
                     return true;
                 }
                 
-                // Test 3: Sprawd� TTL (Windows zazwyczaj ma TTL 128)
+                // Test 3: check TTL (Windows typically 128)
                 if (CheckWindowsTTL(ip))
                 {
                     return true;
                 }
                 
-                // Je�li nazwa nie wygl�da na router/printer, prawdopodobnie to komputer
+                // If name doesn't look like a router/printer, accept it
                 if (!string.IsNullOrEmpty(name) && !name.StartsWith("PC-"))
                 {
                     var upperName = name.ToUpper();
@@ -310,11 +310,11 @@ namespace WOLManager
                            !upperName.Contains("PRINTER");
                 }
                 
-                return true; // Domy�lnie akceptuj
+                return true; // accept by default
             }
             catch
             {
-                return true; // W przypadku b��du, akceptuj
+                return true; // on error, accept
             }
         }
 
@@ -322,10 +322,10 @@ namespace WOLManager
         {
             try
             {
-                // Sprawd� port 445 (SMB) - typowy dla Windows
+                // Check port 445 (SMB) — typical for Windows
                 using var client = new System.Net.Sockets.TcpClient();
                 var result = client.BeginConnect(ip, 445, null, null);
-                var success = result.AsyncWaitHandle.WaitOne(1000); // 1 sekunda timeout
+                var success = result.AsyncWaitHandle.WaitOne(1000); // 1 s timeout
                 
                 if (success)
                 {
@@ -349,8 +349,7 @@ namespace WOLManager
                 
                 if (reply.Status == IPStatus.Success)
                 {
-                    // Windows TTL jest zazwyczaj 128, Linux/Unix 64
-                    // Router/embedded devices cz�sto maj� inne warto�ci
+                    // Windows TTL is typically 128; Linux/Unix 64; routers/embedded devices differ
                     return reply.Options?.Ttl >= 120 && reply.Options?.Ttl <= 128;
                 }
             }
@@ -409,13 +408,13 @@ namespace WOLManager
         {
             try
             {
-                // Najpierw wy�lij ping �eby od�wie�y� ARP cache
+                // Send a ping first to refresh the ARP cache
                 using (var ping = new Ping())
                 {
                     ping.Send(ip, 500);
                 }
-                
-                // Poczekaj chwil� na aktualizacj� ARP cache
+
+                // Wait briefly for ARP cache to update
                 Task.Delay(200).Wait();
                 
                 var process = new ProcessStartInfo

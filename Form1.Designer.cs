@@ -193,7 +193,7 @@ namespace WOLManager
             grpComputers.Controls.Add(btnEdit);
             grpComputers.Controls.Add(btnRemove);
 
-            // ── Standalone: Refresh / Help (zakotwiczone na dole) ─
+            // Standalone: Refresh / Help (anchored to bottom)
             btnSetName.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnSetName.Location = new Point(758, 430);
             btnSetName.Name = "btnSetName";
