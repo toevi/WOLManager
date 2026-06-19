@@ -1,0 +1,48 @@
+# ===== Build output =====
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+build/
+bld/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# ===== Visual Studio =====
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.psess
+*.vsp
+*.vspx
+
+# ===== Installer output =====
+Installer/Output/
+
+# ===== Sekrety / certyfikaty z kluczem prywatnym (NIGDY do repo) =====
+*.pfx
+*.snk
+*.p12
+*.key
+# Certyfikat publiczny też trzymamy lokalnie (decyzja użytkownika)
+*.cer
+
+# ===== Lokalne ustawienia narzędzi =====
+.claude/
+
+# ===== Dane użytkownika / lokalna konfiguracja (wyciek topologii sieci) =====
+computers.json
+
+# ===== Pliki tymczasowe =====
+*.pdb
+*.cache
+*.tmp
+*.log

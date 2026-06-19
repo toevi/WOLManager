@@ -1,0 +1,16 @@
+# Normalizacja końców linii
+* text=auto
+
+*.cs    text diff=csharp
+*.csproj text
+*.sln   text eol=crlf
+*.resx  text
+*.json  text
+*.md    text
+
+# Pliki binarne
+*.ico   binary
+*.pfx   binary
+*.cer   binary
+*.png   binary
+*.exe   binary
