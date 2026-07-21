@@ -7,6 +7,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>ico.ico</ApplicationIcon>
+    <!-- Keep in sync with MyAppVersion in Installer\WOLManager.iss. -->
+    <Version>1.1.2</Version>
   </PropertyGroup>
 
 </Project>

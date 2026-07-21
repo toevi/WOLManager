@@ -2,7 +2,11 @@
 ; Kompilacja:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" WOLManager.iss
 
 #define MyAppName "WOL Manager"
-#define MyAppVersion "1.1"
+; Must be the full release number: it drives the ARP DisplayVersion and the
+; installer filename. Keeping it short (e.g. "1.1" for release v1.1.1) made the
+; installed version disagree with the package version and produced two different
+; releases carrying an identically named WOLManager-Setup-1.1.exe.
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "tmfgroup"
 #define MyAppExeName "WOLManager.exe"
 
@@ -20,6 +24,14 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+
+; Code signing - ACTIVE only when ISCC is invoked with /DSIGN (private Installer\build.ps1,
+; which defines the "wolmanagersign" tool via /S and signs with the tmfgroup cert). Without
+; /DSIGN (e.g. anyone building from the repo) the installer is produced UNSIGNED - by design.
+#ifdef SIGN
+SignTool=wolmanagersign
+SignedUninstaller=yes
+#endif
 
 ; --- Ikony ---
 ; Ikona pliku instalatora (setup.exe)
@@ -40,7 +52,8 @@ Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+; Checked by default, so silent installs (winget) create the desktop icon too.
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "..\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion

@@ -27,6 +27,11 @@ msbuild.wrn
 # ===== Installer output =====
 Installer/Output/
 
+# ===== Prywatny build podpisujący (zawiera odcisk certyfikatu, NIGDY do repo) =====
+# Publiczny, niepodpisany build to build-installer.ps1 w katalogu głównym.
+Installer/build.ps1
+Installer/sign.cmd
+
 # ===== Sekrety / certyfikaty z kluczem prywatnym (NIGDY do repo) =====
 *.pfx
 *.snk
