@@ -2,7 +2,11 @@
 ; Kompilacja:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" WOLManager.iss
 
 #define MyAppName "WOL Manager"
-#define MyAppVersion "1.1"
+; Must be the full release number: it drives the ARP DisplayVersion and the
+; installer filename. Keeping it short (e.g. "1.1" for release v1.1.1) made the
+; installed version disagree with the package version and produced two different
+; releases carrying an identically named WOLManager-Setup-1.1.exe.
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "tmfgroup"
 #define MyAppExeName "WOLManager.exe"
 
