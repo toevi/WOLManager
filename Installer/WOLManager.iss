@@ -21,6 +21,14 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
+; Code signing - ACTIVE only when ISCC is invoked with /DSIGN (private Installer\build.ps1,
+; which defines the "wolmanagersign" tool via /S and signs with the tmfgroup cert). Without
+; /DSIGN (e.g. anyone building from the repo) the installer is produced UNSIGNED - by design.
+#ifdef SIGN
+SignTool=wolmanagersign
+SignedUninstaller=yes
+#endif
+
 ; --- Ikony ---
 ; Ikona pliku instalatora (setup.exe)
 SetupIconFile=..\ico.ico

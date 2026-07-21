@@ -4,6 +4,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,3 +19,40 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+
+    # The installer is defined by Installer/WOLManager.iss but was only ever built
+    # on a developer machine. Building it here proves the script still compiles and
+    # gives every push and PR a downloadable installer to test.
+    - name: Install Inno Setup
+      run: choco install innosetup --no-progress -y
+
+    # Produces an UNSIGNED installer on purpose: the code-signing certificate stays
+    # on the author's machine and is never exposed to CI. Official releases are built
+    # and signed locally with the private Installer/build.ps1.
+    - name: Build installer (unsigned)
+      shell: pwsh
+      run: ./build-installer.ps1
+
+    - name: Report artifact info
+      shell: pwsh
+      run: |
+        $setup = Get-ChildItem Installer/Output -Filter 'WOLManager-Setup-*.exe' -ErrorAction SilentlyContinue |
+                 Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $setup) { throw 'Installer was not produced.' }
+        $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash
+        $lines = @(
+          "**Installer:** ``$($setup.Name)``"
+          "**Size:** $([math]::Round($setup.Length/1MB,1)) MB"
+          "**SHA256:** ``$hash``"
+          "**Signed:** no - CI builds are unsigned by design"
+        )
+        $lines | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+        $lines | Write-Host
+
+    - name: Upload installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: WOLManager-Setup-unsigned
+        path: Installer/Output/WOLManager-Setup-*.exe
+        retention-days: 14
+        if-no-files-found: error
